@@ -33,6 +33,8 @@ jobs:
           BASE_PATH: /horadocafecombolo
           NEXT_PUBLIC_BASE_PATH: /horadocafecombolo
         run: npm run build
+      - name: Normalize asset paths for project Pages
+        run: cp -R dist/client/horadocafecombolo/_next dist/client/_next
       - name: Add Pages fallback
         run: cp dist/client/index.html dist/client/404.html
       - name: Upload Pages artifact

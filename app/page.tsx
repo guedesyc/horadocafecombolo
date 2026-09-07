@@ -1,41 +1,753 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ArrowRight, CakeSlice, Check, Coffee, LockKeyhole, Minus, Pencil, Plus, Save, Search, ShoppingBag, Sparkles, Trash2, Upload, X } from 'lucide-react';
-import { defaultContent, type Category, type Flavor, type SiteContent, type SizeOption } from '@/lib/catalog';
+import {
+  ArrowRight,
+  CakeSlice,
+  Check,
+  Coffee,
+  LockKeyhole,
+  Minus,
+  Pencil,
+  Plus,
+  Save,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
+import {
+  defaultContent,
+  type Category,
+  type Flavor,
+  type SiteContent,
+  type SizeOption,
+} from '@/lib/catalog';
 
-type CartItem = { key: string; category: string; flavor: string; size: string; price: number; quantity: number };
-const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+type CartItem = {
+  key: string;
+  category: string;
+  flavor: string;
+  size: string;
+  price: number;
+  quantity: number;
+};
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const hostedAdminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? '';
-const publicAsset = (source: string) => source.startsWith('/') ? `${publicBasePath}${source}` : source;
+const publicAsset = (source: string) =>
+  source.startsWith('/') ? `${publicBasePath}${source}` : source;
 
-function Card({ category, flavor, add }: { category: Category; flavor: Flavor; add: (item: Omit<CartItem, 'key'>) => void }) {
-  const [quantity, setQuantity] = useState(0); const [size, setSize] = useState<SizeOption | null>(null);
+function Card({
+  category,
+  flavor,
+  add,
+}: {
+  category: Category;
+  flavor: Flavor;
+  add: (item: Omit<CartItem, 'key'>) => void;
+}) {
+  const [quantity, setQuantity] = useState(0);
+  const [size, setSize] = useState<SizeOption | null>(null);
   const single = category.sizes.length === 1;
-  const updateQuantity = (next: number) => { next = Math.max(0, next); setQuantity(next); setSize(next && single ? category.sizes[0] : next ? size : null); };
-  return <article className="product-card"><div className="product-photo">{flavor.image ? <img src={flavor.image} alt={flavor.name} /> : <><CakeSlice /><span>Foto do produto<br />em breve</span></>}</div><div className="product-content"><div className="product-topline"><h3>{flavor.name}</h3><span className="price-from">a partir de {money(Math.min(...category.sizes.map((s) => s.price)))}</span></div><div className="quantity-row"><span>Quantidade</span><div className="stepper"><button onClick={() => updateQuantity(quantity - 1)} disabled={!quantity}><Minus /></button><output>{quantity}</output><button onClick={() => updateQuantity(quantity + 1)}><Plus /></button></div></div>{quantity > 0 && <div className="size-area is-enabled"><div className="size-label"><span>{single ? 'Opção' : 'Escolha o tamanho'}</span></div><div className="size-grid">{category.sizes.map((s) => <button key={s.label} className={size?.label === s.label ? 'selected' : ''} onClick={() => setSize(s)}><span>{s.label}</span><strong>{money(s.price)}</strong></button>)}</div></div>}<button className="add-button" disabled={!quantity || !size} onClick={() => { if (size) { add({ category: category.name, flavor: flavor.name, size: size.label, price: size.price, quantity }); setQuantity(0); setSize(null); } }}><ShoppingBag /> Adicionar ao carrinho</button></div></article>;
+  const updateQuantity = (next: number) => {
+    next = Math.max(0, next);
+    setQuantity(next);
+    setSize(next && single ? category.sizes[0] : next ? size : null);
+  };
+  return (
+    <article className="product-card">
+      <div className="product-photo">
+        {flavor.image ? (
+          <img src={flavor.image} alt={flavor.name} />
+        ) : (
+          <>
+            <CakeSlice />
+            <span>
+              Foto do produto
+              <br />
+              em breve
+            </span>
+          </>
+        )}
+      </div>
+      <div className="product-content">
+        <div className="product-topline">
+          <h3>{flavor.name}</h3>
+          <span className="price-from">
+            a partir de {money(Math.min(...category.sizes.map((s) => s.price)))}
+          </span>
+        </div>
+        <div className="quantity-row">
+          <span>Quantidade</span>
+          <div className="stepper">
+            <button
+              onClick={() => updateQuantity(quantity - 1)}
+              disabled={!quantity}
+            >
+              <Minus />
+            </button>
+            <output>{quantity}</output>
+            <button onClick={() => updateQuantity(quantity + 1)}>
+              <Plus />
+            </button>
+          </div>
+        </div>
+        {quantity > 0 && (
+          <div className="size-area is-enabled">
+            <div className="size-label">
+              <span>{single ? 'Opção' : 'Escolha o tamanho'}</span>
+            </div>
+            <div className="size-grid">
+              {category.sizes.map((s) => (
+                <button
+                  key={s.label}
+                  className={size?.label === s.label ? 'selected' : ''}
+                  onClick={() => setSize(s)}
+                >
+                  <span>{s.label}</span>
+                  <strong>{money(s.price)}</strong>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <button
+          className="add-button"
+          disabled={!quantity || !size}
+          onClick={() => {
+            if (size) {
+              add({
+                category: category.name,
+                flavor: flavor.name,
+                size: size.label,
+                price: size.price,
+                quantity,
+              });
+              setQuantity(0);
+              setSize(null);
+            }
+          }}
+        >
+          <ShoppingBag /> Adicionar ao carrinho
+        </button>
+      </div>
+    </article>
+  );
 }
 
-function Admin({ content, save }: { content: SiteContent; save: (next: SiteContent) => Promise<void> }) {
-  const [logged, setLogged] = useState(false), [username, setUsername] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState(''), [draft, setDraft] = useState(content), [selected, setSelected] = useState(0), [saving, setSaving] = useState(false);
-  useEffect(() => setDraft(content), [content]); const c = draft.categories[selected];
-  const login = async (event: React.FormEvent) => { event.preventDefault(); const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); if (r.ok) setLogged(true); else setError('Usuário ou senha inválidos.'); };
-  const category = (patch: Partial<Category>) => setDraft((d) => ({ ...d, categories: d.categories.map((item, i) => i === selected ? { ...item, ...patch } : item) }));
-  const upload = async (file: File, done: (url: string) => void) => { const data = new FormData(); data.append('file', file); const r = await fetch('/api/upload', { method: 'POST', body: data }); const result = await r.json() as { url?: string; error?: string }; if (r.ok && result.url) done(result.url); else setError(result.error ?? 'Falha ao enviar a imagem.'); };
-  if (!logged) return <main className="admin-login"><a href="/">← Voltar ao cardápio</a><form onSubmit={login}><LockKeyhole /><h1>Área administrativa</h1><p>Entre para atualizar o cardápio.</p><label>Usuário<input value={username} onChange={(e) => setUsername(e.target.value)} /></label><label>Senha<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>{error && <small>{error}</small>}<button>Entrar</button></form></main>;
-  return <main className="admin-page"><header><a href="/">← Ver cardápio</a><button onClick={async () => { setSaving(true); await save(draft).catch(() => setError('Não foi possível salvar.')); setSaving(false); }} disabled={saving}><Save /> {saving ? 'Salvando…' : 'Salvar alterações'}</button></header><section className="admin-settings"><div><span>Conteúdo principal</span><label>Título do header<input value={draft.heroTitle} onChange={(e) => setDraft({ ...draft, heroTitle: e.target.value })} /></label><label>Texto do header<textarea value={draft.heroText} onChange={(e) => setDraft({ ...draft, heroText: e.target.value })} /></label></div><div className="admin-image">{draft.heroImage && <img src={draft.heroImage} alt="Prévia" />}<label className="upload"><Upload /> Trocar imagem<input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, (url) => setDraft({ ...draft, heroImage: url })); }} /></label></div></section><div className="admin-layout"><aside><strong>Categorias</strong>{draft.categories.map((item, i) => <button className={i === selected ? 'selected' : ''} key={item.id} onClick={() => setSelected(i)}>{item.name}</button>)}</aside><section className="editor"><div className="editor-heading"><Pencil /><div><h1>{c.name}</h1><p>Edite tudo que aparece para os clientes.</p></div></div><div className="editor-fields"><label>Nome<input value={c.name} onChange={(e) => category({ name: e.target.value })} /></label><label>Chamada<input value={c.eyebrow} onChange={(e) => category({ eyebrow: e.target.value })} /></label><label>Descrição<textarea value={c.description} onChange={(e) => category({ description: e.target.value })} /></label><label>Selo<input value={c.badge ?? ''} onChange={(e) => category({ badge: e.target.value })} /></label></div><h2>Tamanhos e preços</h2>{c.sizes.map((s, i) => <div className="admin-row" key={i}><input value={s.label} onChange={(e) => category({ sizes: c.sizes.map((x, n) => n === i ? { ...x, label: e.target.value } : x) })} /><input type="number" min="0" step="0.5" value={s.price} onChange={(e) => category({ sizes: c.sizes.map((x, n) => n === i ? { ...x, price: Number(e.target.value) } : x) })} /><button className="icon-delete" onClick={() => category({ sizes: c.sizes.filter((_, n) => n !== i) })}><X /></button></div>)}<button className="add-line" onClick={() => category({ sizes: [...c.sizes, { label: 'Novo tamanho', price: 0 }] })}><Plus /> Adicionar tamanho</button><h2>Itens e fotos</h2>{c.flavors.map((f, i) => <div className="flavor-editor" key={f.id}>{f.image ? <img src={f.image} alt="" /> : <div className="thumb"><CakeSlice /></div>}<input value={f.name} onChange={(e) => category({ flavors: c.flavors.map((x, n) => n === i ? { ...x, name: e.target.value } : x) })} /><label className="upload small"><Upload /><input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file, (url) => category({ flavors: c.flavors.map((x, n) => n === i ? { ...x, image: url } : x) })); }} /></label><button className="icon-delete" onClick={() => category({ flavors: c.flavors.filter((_, n) => n !== i) })}><Trash2 /></button></div>)}<button className="add-line" onClick={() => category({ flavors: [...c.flavors, { id: crypto.randomUUID(), name: 'Novo item' }] })}><Plus /> Adicionar item</button>{error && <p className="admin-error">{error}</p>}</section></div></main>;
+function CategoryRail({
+  categories,
+  active,
+  onSelect,
+}: {
+  categories: Category[];
+  active: string;
+  onSelect: (id: string) => void;
+}) {
+  const rail = useRef<HTMLDivElement>(null);
+  const paused = useRef(false);
+  const dragging = useRef(false);
+  const moved = useRef(false);
+  const startX = useRef(0);
+  const startScroll = useRef(0);
+  const direction = useRef(1);
+
+  useEffect(() => {
+    let frame = 0;
+    const move = () => {
+      const node = rail.current;
+      if (
+        node &&
+        !paused.current &&
+        !dragging.current &&
+        node.scrollWidth > node.clientWidth
+      ) {
+        const limit = node.scrollWidth - node.clientWidth;
+        if (node.scrollLeft >= limit - 1) direction.current = -1;
+        if (node.scrollLeft <= 1) direction.current = 1;
+        node.scrollLeft += direction.current * 0.28;
+      }
+      frame = requestAnimationFrame(move);
+    };
+    frame = requestAnimationFrame(move);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return (
+    <div
+      ref={rail}
+      className="category-strip"
+      aria-label="Categorias"
+      onMouseEnter={() => {
+        paused.current = true;
+      }}
+      onMouseLeave={() => {
+        paused.current = false;
+        dragging.current = false;
+      }}
+      onPointerDown={(event) => {
+        dragging.current = true;
+        moved.current = false;
+        paused.current = true;
+        startX.current = event.clientX;
+        startScroll.current = rail.current?.scrollLeft ?? 0;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (dragging.current && rail.current) {
+          if (Math.abs(event.clientX - startX.current) > 6)
+            moved.current = true;
+          rail.current.scrollLeft =
+            startScroll.current - (event.clientX - startX.current);
+        }
+      }}
+      onPointerUp={(event) => {
+        dragging.current = false;
+        paused.current = false;
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }}
+    >
+      {categories.map((item) => (
+        <button
+          key={item.id}
+          className={active === item.id ? 'active' : ''}
+          onClick={() => {
+            if (!moved.current) onSelect(item.id);
+          }}
+        >
+          {item.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Admin({
+  content,
+  save,
+}: {
+  content: SiteContent;
+  save: (next: SiteContent) => Promise<void>;
+}) {
+  const [logged, setLogged] = useState(false),
+    [username, setUsername] = useState(''),
+    [password, setPassword] = useState(''),
+    [error, setError] = useState(''),
+    [draft, setDraft] = useState(content),
+    [selected, setSelected] = useState(0),
+    [saving, setSaving] = useState(false);
+  useEffect(() => setDraft(content), [content]);
+  const c = draft.categories[selected];
+  const login = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (r.ok) setLogged(true);
+    else setError('Usuário ou senha inválidos.');
+  };
+  const category = (patch: Partial<Category>) =>
+    setDraft((d) => ({
+      ...d,
+      categories: d.categories.map((item, i) =>
+        i === selected ? { ...item, ...patch } : item,
+      ),
+    }));
+  const upload = async (file: File, done: (url: string) => void) => {
+    const data = new FormData();
+    data.append('file', file);
+    const r = await fetch('/api/upload', { method: 'POST', body: data });
+    const result = (await r.json()) as { url?: string; error?: string };
+    if (r.ok && result.url) done(result.url);
+    else setError(result.error ?? 'Falha ao enviar a imagem.');
+  };
+  if (!logged)
+    return (
+      <main className="admin-login">
+        <a href="/">← Voltar ao cardápio</a>
+        <form onSubmit={login}>
+          <LockKeyhole />
+          <h1>Área administrativa</h1>
+          <p>Entre para atualizar o cardápio.</p>
+          <label>
+            Usuário
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </label>
+          <label>
+            Senha
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          {error && <small>{error}</small>}
+          <button>Entrar</button>
+        </form>
+      </main>
+    );
+  return (
+    <main className="admin-page">
+      <header>
+        <a href="/">← Ver cardápio</a>
+        <button
+          onClick={async () => {
+            setSaving(true);
+            await save(draft).catch(() => setError('Não foi possível salvar.'));
+            setSaving(false);
+          }}
+          disabled={saving}
+        >
+          <Save /> {saving ? 'Salvando…' : 'Salvar alterações'}
+        </button>
+      </header>
+      <section className="admin-settings">
+        <div>
+          <span>Conteúdo principal</span>
+          <label>
+            Título do header
+            <input
+              value={draft.heroTitle}
+              onChange={(e) =>
+                setDraft({ ...draft, heroTitle: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            Texto do header
+            <textarea
+              value={draft.heroText}
+              onChange={(e) => setDraft({ ...draft, heroText: e.target.value })}
+            />
+          </label>
+        </div>
+        <div className="admin-image">
+          {draft.heroImage && <img src={draft.heroImage} alt="Prévia" />}
+          <label className="upload">
+            <Upload /> Trocar imagem
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f)
+                  void upload(f, (url) =>
+                    setDraft({ ...draft, heroImage: url }),
+                  );
+              }}
+            />
+          </label>
+        </div>
+      </section>
+      <div className="admin-layout">
+        <aside>
+          <strong>Categorias</strong>
+          {draft.categories.map((item, i) => (
+            <button
+              className={i === selected ? 'selected' : ''}
+              key={item.id}
+              onClick={() => setSelected(i)}
+            >
+              {item.name}
+            </button>
+          ))}
+        </aside>
+        <section className="editor">
+          <div className="editor-heading">
+            <Pencil />
+            <div>
+              <h1>{c.name}</h1>
+              <p>Edite tudo que aparece para os clientes.</p>
+            </div>
+          </div>
+          <div className="editor-fields">
+            <label>
+              Nome
+              <input
+                value={c.name}
+                onChange={(e) => category({ name: e.target.value })}
+              />
+            </label>
+            <label>
+              Chamada
+              <input
+                value={c.eyebrow}
+                onChange={(e) => category({ eyebrow: e.target.value })}
+              />
+            </label>
+            <label>
+              Descrição
+              <textarea
+                value={c.description}
+                onChange={(e) => category({ description: e.target.value })}
+              />
+            </label>
+            <label>
+              Selo
+              <input
+                value={c.badge ?? ''}
+                onChange={(e) => category({ badge: e.target.value })}
+              />
+            </label>
+          </div>
+          <h2>Tamanhos e preços</h2>
+          {c.sizes.map((s, i) => (
+            <div className="admin-row" key={i}>
+              <input
+                value={s.label}
+                onChange={(e) =>
+                  category({
+                    sizes: c.sizes.map((x, n) =>
+                      n === i ? { ...x, label: e.target.value } : x,
+                    ),
+                  })
+                }
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={s.price}
+                onChange={(e) =>
+                  category({
+                    sizes: c.sizes.map((x, n) =>
+                      n === i ? { ...x, price: Number(e.target.value) } : x,
+                    ),
+                  })
+                }
+              />
+              <button
+                className="icon-delete"
+                onClick={() =>
+                  category({ sizes: c.sizes.filter((_, n) => n !== i) })
+                }
+              >
+                <X />
+              </button>
+            </div>
+          ))}
+          <button
+            className="add-line"
+            onClick={() =>
+              category({
+                sizes: [...c.sizes, { label: 'Novo tamanho', price: 0 }],
+              })
+            }
+          >
+            <Plus /> Adicionar tamanho
+          </button>
+          <h2>Itens e fotos</h2>
+          {c.flavors.map((f, i) => (
+            <div className="flavor-editor" key={f.id}>
+              {f.image ? (
+                <img src={f.image} alt="" />
+              ) : (
+                <div className="thumb">
+                  <CakeSlice />
+                </div>
+              )}
+              <input
+                value={f.name}
+                onChange={(e) =>
+                  category({
+                    flavors: c.flavors.map((x, n) =>
+                      n === i ? { ...x, name: e.target.value } : x,
+                    ),
+                  })
+                }
+              />
+              <label className="upload small">
+                <Upload />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file)
+                      void upload(file, (url) =>
+                        category({
+                          flavors: c.flavors.map((x, n) =>
+                            n === i ? { ...x, image: url } : x,
+                          ),
+                        }),
+                      );
+                  }}
+                />
+              </label>
+              <button
+                className="icon-delete"
+                onClick={() =>
+                  category({ flavors: c.flavors.filter((_, n) => n !== i) })
+                }
+              >
+                <Trash2 />
+              </button>
+            </div>
+          ))}
+          <button
+            className="add-line"
+            onClick={() =>
+              category({
+                flavors: [
+                  ...c.flavors,
+                  { id: crypto.randomUUID(), name: 'Novo item' },
+                ],
+              })
+            }
+          >
+            <Plus /> Adicionar item
+          </button>
+          {error && <p className="admin-error">{error}</p>}
+        </section>
+      </div>
+    </main>
+  );
 }
 
 export default function Home() {
-  const [content, setContent] = useState(defaultContent), [active, setActive] = useState(defaultContent.categories[0].id), [query, setQuery] = useState(''), [cart, setCart] = useState<CartItem[]>([]), [cartOpen, setCartOpen] = useState(false); const admin = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('admin');
-  useEffect(() => { if (admin && hostedAdminUrl && window.location.href !== hostedAdminUrl) window.location.replace(hostedAdminUrl); }, [admin]);
-  useEffect(() => { fetch('/api/catalog').then((r) => r.ok ? r.json() : null).then((saved: SiteContent | null) => { if (saved?.categories?.length) { setContent(saved); setActive(saved.categories[0].id); } }).catch(() => undefined); }, []);
-  const c = content.categories.find((item) => item.id === active) ?? content.categories[0], items = c.flavors.filter((item) => item.name.toLowerCase().includes(query.toLowerCase())), count = cart.reduce((sum, item) => sum + item.quantity, 0), total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const add = (item: Omit<CartItem, 'key'>) => setCart((current) => { const key = `${item.category}-${item.flavor}-${item.size}`, old = current.find((x) => x.key === key); return old ? current.map((x) => x.key === key ? { ...x, quantity: x.quantity + item.quantity } : x) : [...current, { ...item, key }]; });
-  const order = useMemo(() => `https://wa.me/71987698100?text=${encodeURIComponent(`Olá! Gostaria de pedir:\n\n${cart.map((x) => `• ${x.quantity}x ${x.category} — ${x.flavor} (${x.size}) — ${money(x.price * x.quantity)}`).join('\n')}\n\n*Total: ${money(total)}*`)}`, [cart, total]);
-  if (admin && hostedAdminUrl) return <main className="admin-login"><p>Redirecionando para o painel administrativo…</p></main>;
-  if (admin) return <Admin content={content} save={async (next) => { const r = await fetch('/api/catalog', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }); if (!r.ok) throw new Error(); setContent(next); }} />;
-  return <main><header className="site-header"><div className="header-inner"><a href="#inicio" className="brand"><Image src={publicAsset('/logo-hora-do-cafe.png')} width={56} height={56} alt="Hora do Café com Bolo" /><div><span>Hora do</span><strong>Café com Bolo</strong></div></a><nav><a href="#cardapio">Cardápio</a><a href="#sobre">Sobre</a><a href="#contato">Contato</a></nav><button className="cart-trigger" onClick={() => setCartOpen(!cartOpen)}><ShoppingBag /><span className="cart-label">Carrinho</span><span className="cart-count">{count}</span></button></div></header>{cartOpen && <aside className="quick-cart"><button className="close-cart" onClick={() => setCartOpen(false)}><X /></button><h2>Seu pedido</h2>{cart.length ? <>{cart.map((x) => <div key={x.key}><span>{x.quantity}x {x.flavor}<small>{x.size}</small></span><strong>{money(x.price * x.quantity)}</strong></div>)}<h3>Total <strong>{money(total)}</strong></h3><a href={order} target="_blank" rel="noreferrer">Confirmar pelo WhatsApp <ArrowRight /></a></> : <p>Seu carrinho está vazio.</p>}</aside>}<section className="intro" id="inicio"><div className="intro-copy"><span className="eyebrow"><Sparkles /> Feito com carinho em Salvador</span><h1>{content.heroTitle}</h1><p>{content.heroText}</p><a href="#cardapio">Escolher delícias <ArrowRight /></a></div><div className="intro-art"><div className="brand-orbit"><span>feito à mão</span><span>desde o primeiro carinho</span></div><img className="chef-hero" src={publicAsset(content.heroImage)} alt="Confeiteira da Hora do Café com Bolo" /><span className="floating-note">Um café.<br /><strong>Um bolo.</strong></span></div></section><section className="menu-section" id="cardapio"><div className="section-heading"><div><span className="section-kicker">Nosso cardápio</span><h2>O que deixa seu dia melhor?</h2></div><label className="search-field"><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Buscar em ${c.name.toLowerCase()}...`} /></label></div><div className="category-strip">{content.categories.map((item) => <button key={item.id} className={active === item.id ? 'active' : ''} onClick={() => { setActive(item.id); setQuery(''); }}>{item.name}</button>)}</div><div className="category-banner"><div><span>{c.eyebrow}</span><h2>{c.name}</h2><p>{c.description}</p></div><div className="banner-meta"><strong>{c.flavors.length} sabores</strong></div></div><div className="selection-tip"><div><Coffee /></div><p><strong>É simples:</strong> escolha a quantidade e depois o tamanho.</p></div><div className="product-grid">{items.map((f) => <Card key={f.id} category={c} flavor={f} add={add} />)}</div></section><section className="about" id="sobre"><div className="about-mark"><Image src={publicAsset('/logo-hora-do-cafe.png')} width={250} height={250} alt="Hora do Café com Bolo" /></div><div className="about-copy"><span className="section-kicker">Do nosso forno para você</span><h2>Receitas que têm gosto de abraço.</h2><p>Pedidos preparados com cuidado, ingredientes escolhidos e aquele toque caseiro.</p></div></section><footer id="contato"><div className="footer-brand"><Image src={publicAsset('/logo-hora-do-cafe.png')} width={64} height={64} alt="" /><div><strong>Hora do Café com Bolo</strong><span>Doçura feita com afeto.</span></div></div><div className="footer-links"><a href="https://instagram.com/horadocafecombolo">@horadocafecombolo</a><a href="https://wa.me/71987698100">WhatsApp: (71) 98769-8100</a></div><div className="developer">Desenvolvido por @yg.systems · <a href="?admin">Administração</a></div></footer></main>;
+  const [content, setContent] = useState(defaultContent),
+    [active, setActive] = useState(defaultContent.categories[0].id),
+    [query, setQuery] = useState(''),
+    [cart, setCart] = useState<CartItem[]>([]),
+    [cartOpen, setCartOpen] = useState(false);
+  const admin =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('admin');
+  useEffect(() => {
+    if (admin && hostedAdminUrl && window.location.href !== hostedAdminUrl)
+      window.location.replace(hostedAdminUrl);
+  }, [admin]);
+  useEffect(() => {
+    fetch('/api/catalog')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((saved: SiteContent | null) => {
+        if (saved?.categories?.length) {
+          setContent(saved);
+          setActive(saved.categories[0].id);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+  const c =
+      content.categories.find((item) => item.id === active) ??
+      content.categories[0],
+    items = c.flavors.filter((item) =>
+      item.name.toLowerCase().includes(query.toLowerCase()),
+    ),
+    count = cart.reduce((sum, item) => sum + item.quantity, 0),
+    total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const add = (item: Omit<CartItem, 'key'>) =>
+    setCart((current) => {
+      const key = `${item.category}-${item.flavor}-${item.size}`,
+        old = current.find((x) => x.key === key);
+      return old
+        ? current.map((x) =>
+            x.key === key ? { ...x, quantity: x.quantity + item.quantity } : x,
+          )
+        : [...current, { ...item, key }];
+    });
+  const order = useMemo(
+    () =>
+      `https://wa.me/71987698100?text=${encodeURIComponent(`Olá! Gostaria de pedir:\n\n${cart.map((x) => `• ${x.quantity}x ${x.category} — ${x.flavor} (${x.size}) — ${money(x.price * x.quantity)}`).join('\n')}\n\n*Total: ${money(total)}*`)}`,
+    [cart, total],
+  );
+  if (admin && hostedAdminUrl)
+    return (
+      <main className="admin-login">
+        <p>Redirecionando para o painel administrativo…</p>
+      </main>
+    );
+  if (admin)
+    return (
+      <Admin
+        content={content}
+        save={async (next) => {
+          const r = await fetch('/api/catalog', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(next),
+          });
+          if (!r.ok) throw new Error();
+          setContent(next);
+        }}
+      />
+    );
+  return (
+    <main>
+      <header className="site-header">
+        <div className="header-inner">
+          <a href="#inicio" className="brand">
+            <Image
+              src={publicAsset('/logo-hora-do-cafe.png')}
+              width={56}
+              height={56}
+              alt="Hora do Café com Bolo"
+            />
+            <div>
+              <span>Hora do</span>
+              <strong>Café com Bolo</strong>
+            </div>
+          </a>
+          <nav>
+            <a href="#cardapio">Cardápio</a>
+            <a href="#sobre">Sobre</a>
+            <a href="#contato">Contato</a>
+          </nav>
+          <button
+            className="cart-trigger"
+            onClick={() => setCartOpen(!cartOpen)}
+          >
+            <ShoppingBag />
+            <span className="cart-label">Carrinho</span>
+            <span className="cart-count">{count}</span>
+          </button>
+        </div>
+      </header>
+      {cartOpen && (
+        <aside className="quick-cart">
+          <button className="close-cart" onClick={() => setCartOpen(false)}>
+            <X />
+          </button>
+          <h2>Seu pedido</h2>
+          {cart.length ? (
+            <>
+              {cart.map((x) => (
+                <div key={x.key}>
+                  <span>
+                    {x.quantity}x {x.flavor}
+                    <small>{x.size}</small>
+                  </span>
+                  <strong>{money(x.price * x.quantity)}</strong>
+                </div>
+              ))}
+              <h3>
+                Total <strong>{money(total)}</strong>
+              </h3>
+              <a href={order} target="_blank" rel="noreferrer">
+                Confirmar pelo WhatsApp <ArrowRight />
+              </a>
+            </>
+          ) : (
+            <p>Seu carrinho está vazio.</p>
+          )}
+        </aside>
+      )}
+      <section className="intro" id="inicio">
+        <div className="intro-copy">
+          <span className="eyebrow">
+            <Sparkles /> Feito com carinho em Salvador
+          </span>
+          <h1>{content.heroTitle}</h1>
+          <p>{content.heroText}</p>
+          <a href="#cardapio">
+            Escolher delícias <ArrowRight />
+          </a>
+        </div>
+        <div className="intro-art">
+          <div className="brand-orbit">
+            <span>feito à mão</span>
+            <span>desde o primeiro carinho</span>
+          </div>
+          <img
+            className="chef-hero"
+            src={publicAsset(content.heroImage)}
+            alt="Confeiteira da Hora do Café com Bolo"
+          />
+          <span className="floating-note">
+            Um café.
+            <br />
+            <strong>Um bolo.</strong>
+          </span>
+        </div>
+      </section>
+      <section className="menu-section" id="cardapio">
+        <div className="section-heading">
+          <div>
+            <span className="section-kicker">Nosso cardápio</span>
+            <h2>O que deixa seu dia melhor?</h2>
+          </div>
+          <label className="search-field">
+            <Search />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Buscar em ${c.name.toLowerCase()}...`}
+            />
+          </label>
+        </div>
+        <CategoryRail
+          categories={content.categories}
+          active={active}
+          onSelect={(id) => {
+            setActive(id);
+            setQuery('');
+          }}
+        />
+        <div className="selection-tip">
+          <div>
+            <Coffee />
+          </div>
+          <p>
+            <strong>É simples:</strong> escolha a quantidade e depois o tamanho.
+          </p>
+        </div>
+        <div className="product-grid">
+          {items.map((f) => (
+            <Card key={f.id} category={c} flavor={f} add={add} />
+          ))}
+        </div>
+      </section>
+      <section className="about" id="sobre">
+        <div className="about-mark">
+          <Image
+            src={publicAsset('/logo-hora-do-cafe.png')}
+            width={250}
+            height={250}
+            alt="Hora do Café com Bolo"
+          />
+        </div>
+        <div className="about-copy">
+          <span className="section-kicker">Do nosso forno para você</span>
+          <h2>Receitas que têm gosto de abraço.</h2>
+          <p>
+            Pedidos preparados com cuidado, ingredientes escolhidos e aquele
+            toque caseiro.
+          </p>
+        </div>
+      </section>
+      <footer id="contato">
+        <div className="footer-brand">
+          <Image
+            src={publicAsset('/logo-hora-do-cafe.png')}
+            width={64}
+            height={64}
+            alt=""
+          />
+          <div>
+            <strong>Hora do Café com Bolo</strong>
+            <span>Doçura feita com afeto.</span>
+          </div>
+        </div>
+        <div className="footer-links">
+          <a href="https://instagram.com/horadocafecombolo">
+            @horadocafecombolo
+          </a>
+          <a href="https://wa.me/71987698100">WhatsApp: (71) 98769-8100</a>
+        </div>
+        <div className="developer">
+          Desenvolvido por @yg.systems · <a href="?admin">Administração</a>
+        </div>
+      </footer>
+    </main>
+  );
 }

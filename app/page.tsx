@@ -801,13 +801,6 @@ export default function CountdownIntro() {
       window.location.replace(`${destination}?admin`);
       return;
     }
-    try {
-      if (sessionStorage.getItem('hora-intro-seen') === 'yes') {
-        window.location.replace(destination);
-        return;
-      }
-    } catch {}
-
     let current = 5;
     const interval = window.setInterval(() => {
       current -= 1;

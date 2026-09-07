@@ -744,7 +744,8 @@ export function Storefront() {
           <a href="https://wa.me/71987698100">WhatsApp: (71) 98769-8100</a>
         </div>
         <div className="developer">
-          Desenvolvido por @yg.systems · <a href="?admin">Administração</a>
+          Desenvolvido por @yg.systems ·{' '}
+          <a href={`${publicBasePath}/cardapio?admin`}>Administração</a>
         </div>
       </footer>
     </main>

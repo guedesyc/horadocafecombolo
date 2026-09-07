@@ -1482,7 +1482,6 @@ footer {
   inset: 0;
   z-index: 70;
   background: rgba(30, 16, 13, 0.42);
-  backdrop-filter: blur(7px);
   animation: cart-fade-in 0.22s ease both;
 }
 .quick-cart {

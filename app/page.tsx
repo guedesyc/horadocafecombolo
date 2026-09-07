@@ -695,7 +695,7 @@ export function Storefront() {
       {cartOpen && (
         <>
           <div className="cart-backdrop" onClick={() => setCartOpen(false)} />
-          <aside className="quick-cart">
+          <aside className="quick-cart" onClick={(event) => event.stopPropagation()}>
           <button className="close-cart" onClick={() => setCartOpen(false)}>
             <X />
           </button>

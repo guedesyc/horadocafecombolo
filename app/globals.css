@@ -1504,7 +1504,9 @@ footer {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: transparent;
+  background: rgba(65, 38, 31, 0.28);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
   animation: cart-fade-in 0.22s ease both;
 }
 .quick-cart {

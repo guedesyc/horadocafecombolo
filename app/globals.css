@@ -1672,7 +1672,7 @@ footer {
 }
 .quick-cart {
   position: fixed;
-  z-index: 50;
+  z-index: 71;
   right: 20px;
   top: 86px;
   width: min(390px, calc(100vw - 32px));

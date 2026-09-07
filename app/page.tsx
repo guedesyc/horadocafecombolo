@@ -237,9 +237,11 @@ function CategoryRail({
         }
       }}
       onPointerUp={(event) => {
+        const wasDragging = dragging.current;
         dragging.current = false;
         resumeLater();
-        event.currentTarget.releasePointerCapture(event.pointerId);
+        if (wasDragging && event.currentTarget.hasPointerCapture(event.pointerId))
+          event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onPointerCancel={() => {
         dragging.current = false;
@@ -339,10 +341,16 @@ function Admin({
           onClick={async () => {
             setSaving(true);
             setSaved(false);
-            await save(draft).catch(() => setError('Não foi possível salvar.'));
-            setSaving(false);
-            setSaved(true);
-            window.setTimeout(() => setSaved(false), 2600);
+            try {
+              await save(draft);
+              setError('');
+              setSaved(true);
+              window.setTimeout(() => setSaved(false), 2600);
+            } catch {
+              setError('Não foi possível salvar. O armazenamento do navegador pode estar cheio.');
+            } finally {
+              setSaving(false);
+            }
           }}
           disabled={saving}
         >
@@ -472,11 +480,13 @@ function Admin({
                 type="number"
                 min="0"
                 step="0.5"
-                value={s.price}
+                value={s.price || ''}
                 onChange={(e) =>
                   category({
                     sizes: c.sizes.map((x, n) =>
-                      n === i ? { ...x, price: Number(e.target.value) } : x,
+                      n === i
+                        ? { ...x, price: e.target.value === '' ? 0 : Number(e.target.value.replace(/^0+(?=\d)/, '')) }
+                        : x,
                     ),
                   })
                 }
@@ -575,10 +585,11 @@ export function Storefront() {
     [query, setQuery] = useState(''),
     [cart, setCart] = useState<CartItem[]>([]),
     [cartOpen, setCartOpen] = useState(false),
-    [cartPulse, setCartPulse] = useState(false);
-  const admin =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('admin');
+    [cartPulse, setCartPulse] = useState(false),
+    [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    setAdmin(new URLSearchParams(window.location.search).has('admin'));
+  }, []);
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCAL_CONTENT_KEY);
@@ -611,7 +622,7 @@ export function Storefront() {
         : [...current, { ...item, key }];
     });
     setCartPulse(true);
-    setCartOpen(true);
+    window.setTimeout(() => setCartOpen(true), 360);
     window.setTimeout(() => setCartPulse(false), 700);
   };
   const order = useMemo(

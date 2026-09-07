@@ -1481,7 +1481,7 @@ footer {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(30, 16, 13, 0.42);
+  background: transparent;
   animation: cart-fade-in 0.22s ease both;
 }
 .quick-cart {

@@ -5,7 +5,6 @@ import Image from 'next/image';
 import {
   ArrowRight,
   CakeSlice,
-  Check,
   Coffee,
   LockKeyhole,
   Minus,
@@ -39,6 +38,16 @@ const money = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const LOCAL_CONTENT_KEY = 'hora-cafe-content-v1';
+const LOCAL_ORDERS_KEY = 'hora-cafe-orders-v1';
+type LocalOrder = {
+  id: string;
+  name: string;
+  deliveryDate: string;
+  items: CartItem[];
+  total: number;
+  status: 'pending' | 'delivered';
+  createdAt: string;
+};
 const publicAsset = (source: string) =>
   source.startsWith('/') ? `${publicBasePath}${source}` : source;
 
@@ -278,10 +287,14 @@ function Admin({
     [password, setPassword] = useState(''),
     [error, setError] = useState(''),
     [saved, setSaved] = useState(false),
+    [orders, setOrders] = useState<LocalOrder[]>([]),
     [draft, setDraft] = useState(content),
     [selected, setSelected] = useState(0),
     [saving, setSaving] = useState(false);
   useEffect(() => setDraft(content), [content]);
+  useEffect(() => {
+    try { setOrders(JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY) ?? '[]')); } catch { setOrders([]); }
+  }, []);
   const c = draft.categories[selected];
   const login = (event: React.FormEvent) => {
     event.preventDefault();
@@ -394,6 +407,17 @@ function Admin({
             />
           </label>
         </div>
+      </section>
+      <section className="admin-orders">
+        <div className="editor-heading"><ShoppingBag /><div><h1>Pedidos</h1><p>Resumo local dos pedidos enviados pelo WhatsApp.</p></div></div>
+        <div className="orders-summary"><strong>{orders.filter((order) => order.status === 'pending').length} pendentes</strong><strong>{money(orders.reduce((sum, order) => sum + order.total, 0))} em pedidos</strong></div>
+        {orders.length === 0 ? <p className="admin-muted">Nenhum pedido registrado neste navegador.</p> : orders.map((order) => (
+          <article className="admin-order" key={order.id}>
+            <div><strong>{order.name}</strong><span>Entrega: {order.deliveryDate.split('-').reverse().join('/')}</span></div>
+            <p>{order.items.map((item) => `${item.quantity}x ${item.flavor}`).join(' · ')}</p>
+            <div><b>{money(order.total)}</b><button onClick={() => { const next = orders.map((item) => item.id === order.id ? { ...item, status: 'delivered' as const } : item); setOrders(next); localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(next)); }}>{order.status === 'pending' ? 'Marcar como entregue' : 'Pedido realizado'}</button></div>
+          </article>
+        ))}
       </section>
       <div className="admin-layout">
         <aside>
@@ -586,6 +610,8 @@ export function Storefront() {
     [cart, setCart] = useState<CartItem[]>([]),
     [cartOpen, setCartOpen] = useState(false),
     [cartPulse, setCartPulse] = useState(false),
+    [customerName, setCustomerName] = useState(''),
+    [deliveryDate, setDeliveryDate] = useState(''),
     [admin, setAdmin] = useState(false);
   useEffect(() => {
     setAdmin(new URLSearchParams(window.location.search).has('admin'));
@@ -627,9 +653,28 @@ export function Storefront() {
   };
   const order = useMemo(
     () =>
-      `https://wa.me/71987698100?text=${encodeURIComponent(`Olá! Gostaria de pedir:\n\n${cart.map((x) => `• ${x.quantity}x ${x.category} — ${x.flavor} (${x.size}) — ${money(x.price * x.quantity)}`).join('\n')}\n\n*Total: ${money(total)}*`)}`,
-    [cart, total],
+      `https://wa.me/71987698100?text=${encodeURIComponent(`Olá, Café com Bolo! Eu quero solicitar:\n\n${cart.map((x) => `- ${x.quantity} - ${x.flavor} (${x.size})`).join('\n')}\n- Dia: ${deliveryDate ? deliveryDate.split('-').reverse().join('/') : ''}\n- Nome: ${customerName}\n\nTotal: ${money(total)}`)}`,
+    [cart, total, customerName, deliveryDate],
   );
+  const orderReady = cart.length > 0 && customerName.trim().length > 1 && Boolean(deliveryDate);
+  const confirmOrder = () => {
+    if (!orderReady) return;
+    try {
+      const record: LocalOrder = {
+        id: `pedido-${Date.now()}`,
+        name: customerName.trim(),
+        deliveryDate,
+        items: cart,
+        total,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+      const previous = JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY) ?? '[]') as LocalOrder[];
+      localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify([...previous, record]));
+    } catch {
+      // O WhatsApp continua sendo aberto mesmo se o armazenamento local estiver indisponível.
+    }
+  };
   if (admin)
     return (
       <Admin
@@ -669,7 +714,15 @@ export function Storefront() {
               <h3>
                 Total <strong>{money(total)}</strong>
               </h3>
-              <a href={order} target="_blank" rel="noreferrer">
+              <label className="order-field">
+                Nome para o pedido
+                <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Seu nome" />
+              </label>
+              <label className="order-field">
+                Data de entrega
+                <input type="date" min={new Date().toISOString().slice(0, 10)} value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} />
+              </label>
+              <a className={!orderReady ? 'is-disabled' : ''} href={orderReady ? order : '#'} target="_blank" rel="noreferrer" onClick={(event) => { if (!orderReady) event.preventDefault(); else confirmOrder(); }}>
                 Confirmar pelo WhatsApp <ArrowRight />
               </a>
             </>

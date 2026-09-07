@@ -52,11 +52,13 @@ function Card({
   add: (item: Omit<CartItem, 'key'>) => void;
 }) {
   const [quantity, setQuantity] = useState(0);
+  const [quantityText, setQuantityText] = useState('');
   const [size, setSize] = useState<SizeOption | null>(null);
   const single = category.sizes.length === 1;
   const updateQuantity = (next: number) => {
     next = Math.max(0, next);
     setQuantity(next);
+    setQuantityText(next ? String(next) : '');
     setSize(next && single ? category.sizes[0] : next ? size : null);
   };
   return (
@@ -91,7 +93,18 @@ function Card({
             >
               <Minus />
             </button>
-            <output>{quantity}</output>
+            <input
+              aria-label={`Quantidade de ${flavor.name}`}
+              inputMode="numeric"
+              type="text"
+              value={quantityText}
+              placeholder="0"
+              onChange={(event) => {
+                const clean = event.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                setQuantityText(clean);
+                updateQuantity(Number(clean) || 0);
+              }}
+            />
             <button onClick={() => updateQuantity(quantity + 1)}>
               <Plus />
             </button>
@@ -129,6 +142,7 @@ function Card({
                 quantity,
               });
               setQuantity(0);
+              setQuantityText('');
               setSize(null);
             }
           }}
@@ -202,6 +216,11 @@ function CategoryRail({
         resumeLater();
       }}
       onPointerDown={(event) => {
+        if ((event.target as HTMLElement).closest('button')) {
+          paused.current = true;
+          moved.current = false;
+          return;
+        }
         dragging.current = true;
         moved.current = false;
         paused.current = true;
@@ -256,6 +275,7 @@ function Admin({
     [username, setUsername] = useState(''),
     [password, setPassword] = useState(''),
     [error, setError] = useState(''),
+    [saved, setSaved] = useState(false),
     [draft, setDraft] = useState(content),
     [selected, setSelected] = useState(0),
     [saving, setSaving] = useState(false);
@@ -318,12 +338,15 @@ function Admin({
         <button
           onClick={async () => {
             setSaving(true);
+            setSaved(false);
             await save(draft).catch(() => setError('Não foi possível salvar.'));
             setSaving(false);
+            setSaved(true);
+            window.setTimeout(() => setSaved(false), 2600);
           }}
           disabled={saving}
         >
-          <Save /> {saving ? 'Salvando…' : 'Salvar alterações'}
+          <Save /> {saving ? 'Salvando…' : saved ? 'Salvo com sucesso' : 'Salvar alterações'}
         </button>
       </header>
       <section className="admin-settings">
@@ -376,6 +399,23 @@ function Admin({
               {item.name}
             </button>
           ))}
+          <button
+            className="add-line"
+            onClick={() => {
+              const next: Category = {
+                id: `categoria-${Date.now()}`,
+                name: 'Nova categoria',
+                eyebrow: 'Feito com carinho',
+                description: 'Descreva esta categoria do seu cardápio.',
+                sizes: [{ label: 'Unidade', price: 0 }],
+                flavors: [],
+              };
+              setDraft((current) => ({ ...current, categories: [...current.categories, next] }));
+              setSelected(draft.categories.length);
+            }}
+          >
+            <Plus /> Nova categoria
+          </button>
         </aside>
         <section className="editor">
           <div className="editor-heading">
@@ -534,7 +574,8 @@ export function Storefront() {
     [active, setActive] = useState(defaultContent.categories[0].id),
     [query, setQuery] = useState(''),
     [cart, setCart] = useState<CartItem[]>([]),
-    [cartOpen, setCartOpen] = useState(false);
+    [cartOpen, setCartOpen] = useState(false),
+    [cartPulse, setCartPulse] = useState(false);
   const admin =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('admin');
@@ -559,7 +600,7 @@ export function Storefront() {
     ),
     count = cart.reduce((sum, item) => sum + item.quantity, 0),
     total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const add = (item: Omit<CartItem, 'key'>) =>
+  const add = (item: Omit<CartItem, 'key'>) => {
     setCart((current) => {
       const key = `${item.category}-${item.flavor}-${item.size}`,
         old = current.find((x) => x.key === key);
@@ -569,6 +610,10 @@ export function Storefront() {
           )
         : [...current, { ...item, key }];
     });
+    setCartPulse(true);
+    setCartOpen(true);
+    window.setTimeout(() => setCartPulse(false), 700);
+  };
   const order = useMemo(
     () =>
       `https://wa.me/71987698100?text=${encodeURIComponent(`Olá! Gostaria de pedir:\n\n${cart.map((x) => `• ${x.quantity}x ${x.category} — ${x.flavor} (${x.size}) — ${money(x.price * x.quantity)}`).join('\n')}\n\n*Total: ${money(total)}*`)}`,
@@ -586,37 +631,15 @@ export function Storefront() {
     );
   return (
     <main>
-      <header className="site-header">
-        <div className="header-inner">
-          <a href="#inicio" className="brand">
-            <Image
-              src={publicAsset('/logo-hora-do-cafe.png')}
-              width={56}
-              height={56}
-              alt="Hora do Café com Bolo"
-            />
-            <div>
-              <span>Hora do</span>
-              <strong>Café com Bolo</strong>
-            </div>
-          </a>
-          <nav>
-            <a href="#cardapio">Cardápio</a>
-            <a href="#sobre">Sobre</a>
-            <a href="#contato">Contato</a>
-          </nav>
-          <button
-            className="cart-trigger"
-            onClick={() => setCartOpen(!cartOpen)}
-          >
-            <ShoppingBag />
-            <span className="cart-label">Carrinho</span>
-            <span className="cart-count">{count}</span>
-          </button>
-        </div>
-      </header>
+      <button className={`cart-trigger cart-floating ${cartPulse ? 'cart-arrived' : ''}`} onClick={() => setCartOpen(!cartOpen)}>
+        <ShoppingBag />
+        <span className="cart-label">Carrinho</span>
+        <span className="cart-count">{count}</span>
+      </button>
       {cartOpen && (
-        <aside className="quick-cart">
+        <>
+          <div className="cart-backdrop" onClick={() => setCartOpen(false)} />
+          <aside className="quick-cart">
           <button className="close-cart" onClick={() => setCartOpen(false)}>
             <X />
           </button>
@@ -642,7 +665,8 @@ export function Storefront() {
           ) : (
             <p>Seu carrinho está vazio.</p>
           )}
-        </aside>
+          </aside>
+        </>
       )}
       <section className="intro" id="inicio">
         <div className="intro-copy">
@@ -804,6 +828,7 @@ export default function CountdownIntro() {
       <div className="countdown-glow" aria-hidden="true" />
       <div className="countdown-content">
         <Image className="countdown-logo" src={publicAsset('/favicon-cafe-com-bolo.png')} width={132} height={132} alt="Hora do Café com Bolo" priority />
+        <div className="countdown-brand">Café Com Bolo</div>
         {phase === 'countdown' ? (
           <div className="countdown-stage">
             <span>Prepare a sua pausa</span>

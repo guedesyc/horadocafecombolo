@@ -45,6 +45,10 @@ export default defineConfig(async () => {
   if (process.env.GITHUB_PAGES === 'true') {
     return {
       css: { postcss: { plugins: [tailwindcss()] } },
+      // API routes use Cloudflare bindings in the hosted deployment. GitHub Pages
+      // emits a static export and never executes those routes, so leave this
+      // runtime-only module external while generating the static site.
+      build: { rolldownOptions: { external: ['cloudflare:workers'] } },
       server: isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : undefined,

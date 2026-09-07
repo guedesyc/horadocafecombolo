@@ -231,6 +231,9 @@ function CategoryRail({
         <button
           key={item.id}
           className={active === item.id ? 'active' : ''}
+          onPointerUp={() => {
+            if (!moved.current) onSelect(item.id);
+          }}
           onClick={() => {
             if (!moved.current) onSelect(item.id);
           }}
@@ -283,7 +286,7 @@ function Admin({
   if (!logged)
     return (
       <main className="admin-login">
-        <a href="/">← Voltar ao cardápio</a>
+        <a href={publicBasePath || '/'}>← Voltar ao cardápio</a>
         <form onSubmit={login}>
           <LockKeyhole />
           <h1>Área administrativa</h1>
@@ -311,7 +314,7 @@ function Admin({
   return (
     <main className="admin-page">
       <header>
-        <a href="/">← Ver cardápio</a>
+        <a href={publicBasePath || '/'}>← Ver cardápio</a>
         <button
           onClick={async () => {
             setSaving(true);

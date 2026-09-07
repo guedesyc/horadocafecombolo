@@ -792,7 +792,7 @@ export function Storefront() {
 
 export default function CountdownIntro() {
   const [count, setCount] = useState(5);
-  const [phase, setPhase] = useState<'countdown' | 'message' | 'leaving'>('countdown');
+  const [phase, setPhase] = useState<'countdown' | 'message' | 'logo' | 'leaving'>('countdown');
 
   useEffect(() => {
     const destination = `${publicBasePath}/cardapio`;
@@ -812,10 +812,12 @@ export default function CountdownIntro() {
       try { sessionStorage.setItem('hora-intro-seen', 'yes'); } catch {}
       setPhase('message');
     }, 1000);
-    const fade = window.setTimeout(() => setPhase('leaving'), 6700);
-    const navigate = window.setTimeout(() => window.location.replace(destination), 7500);
+    const showLogo = window.setTimeout(() => setPhase('logo'), 7000);
+    const fade = window.setTimeout(() => setPhase('leaving'), 8600);
+    const navigate = window.setTimeout(() => window.location.replace(destination), 9500);
     return () => {
       window.clearInterval(interval);
+      window.clearTimeout(showLogo);
       window.clearTimeout(fade);
       window.clearTimeout(navigate);
     };
@@ -831,19 +833,28 @@ export default function CountdownIntro() {
     <main className={`countdown-page ${phase === 'leaving' ? 'is-leaving' : ''}`}>
       <div className="countdown-glow" aria-hidden="true" />
       <div className="countdown-content">
-        <Image className="countdown-logo" src={publicAsset('/favicon-cafe-com-bolo.png')} width={132} height={132} alt="Hora do Café com Bolo" priority />
-        <div className="countdown-brand">Café Com Bolo</div>
+        {phase === 'countdown' && (
+          <>
+            <Image className="countdown-logo" src={publicAsset('/favicon-cafe-com-bolo.png')} width={132} height={132} alt="Hora do Café com Bolo" priority />
+            <div className="countdown-brand">Café Com Bolo</div>
+          </>
+        )}
         {phase === 'countdown' ? (
           <div className="countdown-stage">
             <span>Prepare a sua pausa</span>
             <strong key={count} className="countdown-number">00:00:{String(count).padStart(2, '0')}</strong>
             <div className="countdown-progress"><i style={{ '--count': count } as React.CSSProperties} /></div>
           </div>
-        ) : (
+        ) : phase === 'message' ? (
           <output className="countdown-arrival">
             <span>O momento chegou</span>
-            <h1>Chegou a hora do<br /><em>café com bolo!</em></h1>
+            <h1>Chegou a hora do<br /><em>Café Com Bolo!</em></h1>
           </output>
+        ) : (
+          <div className="countdown-logo-reveal">
+            <Image src={publicAsset('/favicon-cafe-com-bolo.png')} width={360} height={360} alt="Café Com Bolo" priority />
+            <strong>Café Com Bolo</strong>
+          </div>
         )}
       </div>
       <button type="button" className="countdown-skip" onClick={skip}>Pular introdução <ArrowRight /></button>

@@ -32,10 +32,12 @@ jobs:
           GITHUB_PAGES: 'true'
           BASE_PATH: /horadocafecombolo
           NEXT_PUBLIC_BASE_PATH: /horadocafecombolo
-          NEXT_PUBLIC_ADMIN_URL: https://hora-do-cafe-com-bolo.espa-o-de-tr-5566.chatgpt.site/?admin
+          NEXT_PUBLIC_ADMIN_URL: https://hora-do-cafe-com-bolo.espa-o-de-tr-5566.chatgpt.site/cardapio?admin
         run: npm run build
       - name: Normalize asset paths for project Pages
         run: cp -R dist/client/horadocafecombolo/_next dist/client/_next
+      - name: Add directory-style menu route
+        run: mkdir -p dist/client/cardapio && cp dist/client/cardapio.html dist/client/cardapio/index.html
       - name: Add Pages fallback
         run: cp dist/client/index.html dist/client/404.html
       - name: Upload Pages artifact

@@ -156,6 +156,14 @@ function CategoryRail({
   const startX = useRef(0);
   const startScroll = useRef(0);
   const direction = useRef(1);
+  const resumeTimer = useRef<number | undefined>(undefined);
+
+  const resumeLater = () => {
+    window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => {
+      paused.current = false;
+    }, 2200);
+  };
 
   useEffect(() => {
     let frame = 0;
@@ -175,7 +183,10 @@ function CategoryRail({
       frame = requestAnimationFrame(move);
     };
     frame = requestAnimationFrame(move);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(resumeTimer.current);
+    };
   }, []);
 
   return (
@@ -187,8 +198,8 @@ function CategoryRail({
         paused.current = true;
       }}
       onMouseLeave={() => {
-        paused.current = false;
         dragging.current = false;
+        resumeLater();
       }}
       onPointerDown={(event) => {
         dragging.current = true;
@@ -208,8 +219,12 @@ function CategoryRail({
       }}
       onPointerUp={(event) => {
         dragging.current = false;
-        paused.current = false;
+        resumeLater();
         event.currentTarget.releasePointerCapture(event.pointerId);
+      }}
+      onPointerCancel={() => {
+        dragging.current = false;
+        resumeLater();
       }}
     >
       {categories.map((item) => (
@@ -514,7 +529,7 @@ function Admin({
   );
 }
 
-export default function Home() {
+export function Storefront() {
   const [content, setContent] = useState(defaultContent),
     [active, setActive] = useState(defaultContent.categories[0].id),
     [query, setQuery] = useState(''),
@@ -748,6 +763,73 @@ export default function Home() {
           Desenvolvido por @yg.systems · <a href="?admin">Administração</a>
         </div>
       </footer>
+    </main>
+  );
+}
+
+export default function CountdownIntro() {
+  const [count, setCount] = useState(5);
+  const [phase, setPhase] = useState<'countdown' | 'message' | 'leaving'>('countdown');
+
+  useEffect(() => {
+    const destination = `${publicBasePath}/cardapio`;
+    const wantsAdmin = new URLSearchParams(window.location.search).has('admin');
+    if (wantsAdmin) {
+      window.location.replace(`${destination}?admin`);
+      return;
+    }
+    try {
+      if (sessionStorage.getItem('hora-intro-seen') === 'yes') {
+        window.location.replace(destination);
+        return;
+      }
+    } catch {}
+
+    let current = 5;
+    const interval = window.setInterval(() => {
+      current -= 1;
+      if (current > 0) {
+        setCount(current);
+        return;
+      }
+      window.clearInterval(interval);
+      try { sessionStorage.setItem('hora-intro-seen', 'yes'); } catch {}
+      setPhase('message');
+    }, 1000);
+    const fade = window.setTimeout(() => setPhase('leaving'), 6700);
+    const navigate = window.setTimeout(() => window.location.replace(destination), 7500);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(fade);
+      window.clearTimeout(navigate);
+    };
+  }, []);
+
+  const skip = () => {
+    try { sessionStorage.setItem('hora-intro-seen', 'yes'); } catch {}
+    setPhase('leaving');
+    window.setTimeout(() => window.location.replace(`${publicBasePath}/cardapio`), 420);
+  };
+
+  return (
+    <main className={`countdown-page ${phase === 'leaving' ? 'is-leaving' : ''}`}>
+      <div className="countdown-glow" aria-hidden="true" />
+      <div className="countdown-content">
+        <Image className="countdown-logo" src={publicAsset('/favicon-cafe-com-bolo.png')} width={132} height={132} alt="Hora do Café com Bolo" priority />
+        {phase === 'countdown' ? (
+          <div className="countdown-stage">
+            <span>Prepare a sua pausa</span>
+            <strong key={count} className="countdown-number">00:00:{String(count).padStart(2, '0')}</strong>
+            <div className="countdown-progress"><i style={{ '--count': count } as React.CSSProperties} /></div>
+          </div>
+        ) : (
+          <output className="countdown-arrival">
+            <span>O momento chegou</span>
+            <h1>Chegou a hora do<br /><em>café com bolo!</em></h1>
+          </output>
+        )}
+      </div>
+      <button type="button" className="countdown-skip" onClick={skip}>Pular introdução <ArrowRight /></button>
     </main>
   );
 }

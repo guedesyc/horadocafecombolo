@@ -9,7 +9,9 @@ const nextConfig: NextConfig = {
   output: isGithubPages ? 'export' : undefined,
   basePath: isGithubPages ? '' : basePath,
   assetPrefix: basePath ? `${basePath}/` : undefined,
-  trailingSlash: true,
+  // Vinext's static prerenderer follows file-style routes more reliably on
+  // GitHub Pages; the hosting layer still serves /cardapio as expected.
+  trailingSlash: false,
   images: { unoptimized: true },
 };
 

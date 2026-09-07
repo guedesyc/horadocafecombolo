@@ -32,7 +32,6 @@ jobs:
           GITHUB_PAGES: 'true'
           BASE_PATH: /horadocafecombolo
           NEXT_PUBLIC_BASE_PATH: /horadocafecombolo
-          NEXT_PUBLIC_ADMIN_URL: https://hora-do-cafe-com-bolo.espa-o-de-tr-5566.chatgpt.site/cardapio?admin
         run: npm run build
       - name: Normalize asset paths for project Pages
         run: cp -R dist/client/horadocafecombolo/_next dist/client/_next

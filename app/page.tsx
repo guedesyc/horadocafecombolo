@@ -38,7 +38,7 @@ type CartItem = {
 const money = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const publicBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const hostedAdminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? '';
+const LOCAL_CONTENT_KEY = 'hora-cafe-content-v1';
 const publicAsset = (source: string) =>
   source.startsWith('/') ? `${publicBasePath}${source}` : source;
 
@@ -258,14 +258,10 @@ function Admin({
     [saving, setSaving] = useState(false);
   useEffect(() => setDraft(content), [content]);
   const c = draft.categories[selected];
-  const login = async (event: React.FormEvent) => {
+  const login = (event: React.FormEvent) => {
     event.preventDefault();
-    const r = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    if (r.ok) setLogged(true);
+    if (username.trim().toLowerCase() === 'admin' && password === 'admin')
+      setLogged(true);
     else setError('Usuário ou senha inválidos.');
   };
   const category = (patch: Partial<Category>) =>
@@ -275,13 +271,14 @@ function Admin({
         i === selected ? { ...item, ...patch } : item,
       ),
     }));
-  const upload = async (file: File, done: (url: string) => void) => {
-    const data = new FormData();
-    data.append('file', file);
-    const r = await fetch('/api/upload', { method: 'POST', body: data });
-    const result = (await r.json()) as { url?: string; error?: string };
-    if (r.ok && result.url) done(result.url);
-    else setError(result.error ?? 'Falha ao enviar a imagem.');
+  const upload = (file: File, done: (url: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') done(reader.result);
+      else setError('Falha ao ler a imagem.');
+    };
+    reader.onerror = () => setError('Falha ao ler a imagem.');
+    reader.readAsDataURL(file);
   };
   if (!logged)
     return (
@@ -356,7 +353,7 @@ function Admin({
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f)
-                  void upload(f, (url) =>
+                      upload(f, (url) =>
                     setDraft({ ...draft, heroImage: url }),
                   );
               }}
@@ -489,7 +486,7 @@ function Admin({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file)
-                      void upload(file, (url) =>
+                      upload(file, (url) =>
                         category({
                           flavors: c.flavors.map((x, n) =>
                             n === i ? { ...x, image: url } : x,
@@ -539,19 +536,17 @@ export function Storefront() {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('admin');
   useEffect(() => {
-    if (admin && hostedAdminUrl && window.location.href !== hostedAdminUrl)
-      window.location.replace(hostedAdminUrl);
-  }, [admin]);
-  useEffect(() => {
-    fetch('/api/catalog')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((saved: SiteContent | null) => {
-        if (saved?.categories?.length) {
-          setContent(saved);
-          setActive(saved.categories[0].id);
-        }
-      })
-      .catch(() => undefined);
+    try {
+      const saved = localStorage.getItem(LOCAL_CONTENT_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as SiteContent;
+      if (parsed?.categories?.length) {
+        setContent(parsed);
+        setActive(parsed.categories[0].id);
+      }
+    } catch {
+      // Corrupt or unavailable local data falls back to the built-in catalog.
+    }
   }, []);
   const c =
       content.categories.find((item) => item.id === active) ??
@@ -576,23 +571,12 @@ export function Storefront() {
       `https://wa.me/71987698100?text=${encodeURIComponent(`Olá! Gostaria de pedir:\n\n${cart.map((x) => `• ${x.quantity}x ${x.category} — ${x.flavor} (${x.size}) — ${money(x.price * x.quantity)}`).join('\n')}\n\n*Total: ${money(total)}*`)}`,
     [cart, total],
   );
-  if (admin && hostedAdminUrl)
-    return (
-      <main className="admin-login">
-        <p>Redirecionando para o painel administrativo…</p>
-      </main>
-    );
   if (admin)
     return (
       <Admin
         content={content}
         save={async (next) => {
-          const r = await fetch('/api/catalog', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(next),
-          });
-          if (!r.ok) throw new Error();
+          localStorage.setItem(LOCAL_CONTENT_KEY, JSON.stringify(next));
           setContent(next);
         }}
       />
